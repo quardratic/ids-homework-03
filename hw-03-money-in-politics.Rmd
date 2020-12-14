@@ -1,0 +1,139 @@
+---
+title: "HW 03 - Money in politics"
+author: "Yongxin Guo"
+date: "`r Sys.Date()`"
+output: github_document
+editor_options: 
+  chunk_output_type: console
+---
+
+
+### Load packages
+
+```{r load-packages, message = FALSE}
+library(tidyverse)
+library(scales)
+```
+
+### Ex. 1
+
+#### Code
+
+```{r load-pac-all}
+pac_all <- read_csv("data/pac-all.csv")
+```
+
+#### Narrative
+
+This data frame contains `r nrow(pac_all)` observations and `r ncol(pac_all)` variables.
+
+
+### Ex. 2
+
+#### Code
+
+```{r separate-name-country}
+pac_all <- pac_all %>% 
+  separate(country_parent, into = c("country", "parent"), sep = "/", extra = "merge")
+```
+
+```{r show-result-1}
+pac_all
+```
+
+
+### Ex. 3
+
+#### Code
+
+```{r clean-currency}
+parse_currency <- function(x){
+  x %>% 
+    str_remove("\\$") %>% 
+    str_remove_all(",") %>% 
+    as.numeric
+}
+
+pac_all_clean <- pac_all %>% 
+  mutate(
+    total = parse_currency(total),
+    dems = parse_currency(dems),
+    repubs = parse_currency(repubs)
+  )
+```
+
+```{r show-result-2}
+pac_all_clean
+```
+
+
+### Ex. 4
+
+#### Code
+
+```{r ca-mex-viz}
+pac_all_clean %>% 
+  filter(country %in% c("Canada", "Mexico")) %>% 
+  group_by(country, year) %>% 
+  summarise(total_all = sum(total)) %>% 
+  ggplot(mapping = aes(x = year,
+                       y = total_all,
+                       group = country,
+                       color = country)) +
+  geom_line() +
+  labs(x = "Year",
+       y = "Total",
+       color = "Country",
+       title = "Total Contributions from All Foreign-Connected PACs to US Politics",
+       subtitle = "of Canada and Mexico",
+       caption = "Source: OpenSecrets.org") +
+  scale_x_continuous(breaks = seq(2000, 2020, 2)) +
+  scale_y_continuous(labels = label_dollar(scale = 0.000001, prefix = "$", suffix = "M"))
+```
+
+#### Narrative
+
+The line plot reveals that the total contributions from Canadian PACs to US politics was always significantly more than the total contributions from Mexico over the period from 1998 to 2020. Also, the general trend of total contributions to US politics, from PACs in both Canada and Mexico, the only two adjacent countries to the USA, have showed an increasing trend overall.
+
+
+### Ex. 5
+
+#### Code
+
+```{r uk-viz}
+pac_all_uk <- pac_all_clean %>% 
+  filter(
+    country == "UK",
+    year < 2020
+    ) %>% 
+  group_by(year) %>% 
+  summarise(
+    Democrat = sum(dems),
+    Republican = sum(repubs)
+  ) %>% 
+  pivot_longer(
+    cols = c(Democrat, Republican),
+    names_to = "party",
+    values_to = "amount"
+    )
+
+pac_all_uk %>% 
+  ggplot(aes(x = year,
+             y = amount,
+             color= party)) +
+  geom_line() +
+  labs(x = "Year",
+       y = "Amount",
+       color = "Party",
+       title = "Contributions to US politics from UK-Connected PACs",
+       subtitle = "By party, over time") +
+  scale_y_continuous(labels = label_dollar(scale = 0.000001, 
+                                           prefix = "$", 
+                                           suffix = "M")) +
+  scale_color_manual(values = c("blue", "red")) +
+  theme_minimal()
+```
+
+#### Narrative
+
+The graph reveals that the total contributions to US Republican Party from UK-connected PACs have been generally increasing over years from 1998 to 2020. However, this is a mpre complicated trend to US Democratic Party. The total contributions from UK-connected PACs to Democrat was increasing over the years from 1998 to 2010, and then cchanged to a decreasing trend over the years from 2010 to 2020.
